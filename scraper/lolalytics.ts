@@ -7,7 +7,6 @@ const UA =
 export interface ScrapedRow {
 	slug: string;
 	name: string;
-	tier: string;
 	laneShare: number;
 	winRate: number;
 	pickRate: number;
@@ -22,7 +21,7 @@ export interface LaneScrape {
 
 /**
  * Lolalytics tier-list rows are a flat flex div of exactly 15 cells:
- *   0 rank | 1 icon | 2 name | 3 tier | 4 lane% | 5 win% (+delta on a 2nd line)
+ *   0 rank | 1 icon | 2 name | 3 tier (unused) | 4 lane% | 5 win% (+delta below)
  *   6 pick% | 7 ban% | 8 PBI | 9 games | 10..14 "Best Worldwide on Champion"
  * The trailing five are deliberately ignored — they describe one-trick
  * outliers on the champion, not the meta.
@@ -46,7 +45,7 @@ const ROW_EXTRACTOR = () => {
 		const [laneShare, winRate, pickRate, banRate, games] = values;
 		if (!slug || !name) continue;
 
-		rows.push({ slug, name, tier: text(3), laneShare, winRate, pickRate, banRate, games });
+		rows.push({ slug, name, laneShare, winRate, pickRate, banRate, games });
 	}
 	return rows as ScrapedRow[];
 };

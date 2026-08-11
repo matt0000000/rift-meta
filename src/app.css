@@ -17,6 +17,7 @@
 
 	--color-win: #3987e5; /* win-rate series */
 	--color-pick: #d95926; /* pick-rate series */
+	--color-ban: #199e70; /* ban-rate series */
 
 	--color-up: #0ca30c; /* status: good */
 	--color-down: #d03b3b; /* status: critical */

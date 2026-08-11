@@ -33,8 +33,6 @@ export const snapshots = sqliteTable(
 		/** Share of this champion's games that were played in this lane. */
 		laneShare: real('lane_share').notNull(),
 		games: integer('games').notNull(),
-		/** Lolalytics tier badge (S+, S, A ...), kept for reference only. */
-		tier: text('tier'),
 		/** Game patch the sample came from, e.g. "16.15". */
 		patch: text('patch').notNull()
 	},

@@ -3,7 +3,7 @@
 	let { children } = $props();
 </script>
 
-<div class="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+<div class="mx-auto max-w-6xl px-4 py-6 sm:px-6">
 	<header class="mb-6 flex items-baseline justify-between border-b border-line pb-4">
 		<a href="/" class="flex items-baseline gap-2.5">
 			<span class="text-lg font-semibold tracking-tight">Rift Meta</span>

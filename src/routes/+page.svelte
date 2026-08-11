@@ -7,7 +7,13 @@
 
 	let { data }: { data: PageData } = $props();
 
-	type SortKey = 'winRate' | 'pickRate' | 'winDelta' | 'pickDelta';
+	type SortKey =
+		| 'winRate'
+		| 'pickRate'
+		| 'banRate'
+		| 'winDelta'
+		| 'pickDelta'
+		| 'banDelta';
 	let sort = $state<SortKey>('winRate');
 	let minPick = $state(0.5);
 
@@ -25,17 +31,19 @@
 			})
 	);
 
-	const columns: { key: SortKey; label: string }[] = [
-		{ key: 'winRate', label: 'Win rate' },
-		{ key: 'pickRate', label: 'Pick rate' }
-	];
+	/** Each measure renders as value / delta / sparkline, in this order. */
+	const measures = [
+		{ key: 'winRate', delta: 'winDelta', label: 'Win rate' },
+		{ key: 'pickRate', delta: 'pickDelta', label: 'Pick rate' },
+		{ key: 'banRate', delta: 'banDelta', label: 'Ban rate' }
+	] as const;
 </script>
 
 <svelte:head>
-	<title>{LANE_LABELS[data.lane]} tier list · Rift Meta</title>
+	<title>{LANE_LABELS[data.lane]} champion stats · Rift Meta</title>
 	<meta
 		name="description"
-		content="Daily Emerald+ win rate and pick rate trends for every League of Legends champion, by role."
+		content="Daily Emerald+ win rate, pick rate and ban rate trends for every League of Legends champion, by role."
 	/>
 </svelte:head>
 
@@ -82,27 +90,24 @@
 	</div>
 {:else}
 	<div class="overflow-x-auto rounded-lg border border-line">
-		<table class="w-full min-w-[680px] border-collapse text-sm">
+		<table class="w-full min-w-[940px] border-collapse text-sm">
 			<thead>
 				<tr class="bg-surface-1 text-ink-2 text-left text-xs">
 					<th scope="col" class="w-10 px-3 py-2.5 font-medium">#</th>
 					<th scope="col" class="px-3 py-2.5 font-medium">Champion</th>
-					{#each columns as col (col.key)}
+					{#each measures as m (m.key)}
 						<th scope="col" class="px-3 py-2.5 text-right font-medium">
 							<button
-								onclick={() => (sort = col.key)}
-								class="hover:text-ink transition-colors {sort === col.key ? 'text-ink' : ''}"
+								onclick={() => (sort = m.key)}
+								class="hover:text-ink transition-colors {sort === m.key ? 'text-ink' : ''}"
 							>
-								{col.label}
+								{m.label}
 							</button>
 						</th>
 						<th scope="col" class="px-2 py-2.5 text-right font-medium">
 							<button
-								onclick={() => (sort = col.key === 'winRate' ? 'winDelta' : 'pickDelta')}
-								class="hover:text-ink transition-colors {sort ===
-								(col.key === 'winRate' ? 'winDelta' : 'pickDelta')
-									? 'text-ink'
-									: ''}"
+								onclick={() => (sort = m.delta)}
+								class="hover:text-ink transition-colors {sort === m.delta ? 'text-ink' : ''}"
 								title="Change over the last {data.trendDays} days"
 							>
 								Δ
@@ -127,11 +132,6 @@
 									class="rounded"
 								/>
 								<span class="font-medium">{row.name}</span>
-								{#if row.tier}
-									<span class="text-ink-3 rounded bg-surface-2 px-1.5 py-0.5 text-[10px]">
-										{row.tier}
-									</span>
-								{/if}
 							</a>
 						</td>
 
@@ -152,6 +152,16 @@
 								values={row.history.map((h) => h.pickRate)}
 								color="var(--color-pick)"
 								label="{row.name} pick rate over {data.trendDays} days"
+							/>
+						</td>
+
+						<td class="nums px-3 py-2 text-right font-medium">{row.banRate.toFixed(2)}%</td>
+						<td class="px-2 py-2 text-right"><Delta value={row.banDelta} /></td>
+						<td class="px-2 py-2">
+							<Sparkline
+								values={row.history.map((h) => h.banRate)}
+								color="var(--color-ban)"
+								label="{row.name} ban rate over {data.trendDays} days"
 							/>
 						</td>
 					</tr>

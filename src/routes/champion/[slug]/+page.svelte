@@ -16,13 +16,14 @@
 
 	let winSeries = $derived(active?.history.map((h) => ({ day: h.day, value: h.winRate })) ?? []);
 	let pickSeries = $derived(active?.history.map((h) => ({ day: h.day, value: h.pickRate })) ?? []);
+	let banSeries = $derived(active?.history.map((h) => ({ day: h.day, value: h.banRate })) ?? []);
 </script>
 
 <svelte:head>
 	<title>{data.champion.name} stats · Rift Meta</title>
 	<meta
 		name="description"
-		content="{data.champion.name} Emerald+ win rate and pick rate trends by role."
+		content="{data.champion.name} Emerald+ win rate, pick rate and ban rate trends by role."
 	/>
 </svelte:head>
 
@@ -66,7 +67,7 @@
 
 	<!-- Hero numbers first: the headline needs no chart. -->
 	<div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-		{#each [{ label: 'Win rate', value: active.current.winRate, d: delta(active.history.map((h) => h.winRate)) }, { label: 'Pick rate', value: active.current.pickRate, d: delta(active.history.map((h) => h.pickRate)) }, { label: 'Ban rate', value: active.current.banRate, d: null }] as stat (stat.label)}
+		{#each [{ label: 'Win rate', value: active.current.winRate, d: delta(active.history.map((h) => h.winRate)) }, { label: 'Pick rate', value: active.current.pickRate, d: delta(active.history.map((h) => h.pickRate)) }, { label: 'Ban rate', value: active.current.banRate, d: delta(active.history.map((h) => h.banRate)) }] as stat (stat.label)}
 			<div class="rounded-lg border border-line bg-surface-1 p-3">
 				<div class="text-ink-2 text-xs">{stat.label}</div>
 				<div class="nums mt-0.5 text-xl font-semibold">{stat.value.toFixed(2)}%</div>
@@ -78,21 +79,22 @@
 		<div class="rounded-lg border border-line bg-surface-1 p-3">
 			<div class="text-ink-2 text-xs">Games</div>
 			<div class="nums mt-0.5 text-xl font-semibold">{active.current.games.toLocaleString()}</div>
-			{#if active.current.tier}
-				<div class="text-ink-3 mt-0.5 text-xs">Tier {active.current.tier}</div>
-			{/if}
 		</div>
 	</div>
 
 	<!--
-		Two measures on different scales get two charts, never one with two y-axes.
+		Three measures on different scales get three charts, never one plot with
+		multiple y-axes.
 	-->
-	<div class="grid gap-6 lg:grid-cols-2">
+	<div class="grid gap-6 lg:grid-cols-3">
 		<div class="rounded-lg border border-line bg-surface-1 p-4">
 			<TrendChart points={winSeries} color="var(--color-win)" title="Win rate" />
 		</div>
 		<div class="rounded-lg border border-line bg-surface-1 p-4">
 			<TrendChart points={pickSeries} color="var(--color-pick)" title="Pick rate" />
+		</div>
+		<div class="rounded-lg border border-line bg-surface-1 p-4">
+			<TrendChart points={banSeries} color="var(--color-ban)" title="Ban rate" />
 		</div>
 	</div>
 
@@ -106,6 +108,7 @@
 						<th scope="col" class="px-3 py-2 font-medium">Date</th>
 						<th scope="col" class="px-3 py-2 text-right font-medium">Win rate</th>
 						<th scope="col" class="px-3 py-2 text-right font-medium">Pick rate</th>
+						<th scope="col" class="px-3 py-2 text-right font-medium">Ban rate</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -114,6 +117,7 @@
 							<td class="nums px-3 py-1.5">{h.day}</td>
 							<td class="nums px-3 py-1.5 text-right">{h.winRate.toFixed(2)}%</td>
 							<td class="nums px-3 py-1.5 text-right">{h.pickRate.toFixed(2)}%</td>
+							<td class="nums px-3 py-1.5 text-right">{h.banRate.toFixed(2)}%</td>
 						</tr>
 					{/each}
 				</tbody>

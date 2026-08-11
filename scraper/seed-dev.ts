@@ -34,18 +34,21 @@ const rows: (typeof snapshots.$inferInsert)[] = [];
 for (const row of base) {
 	let win = row.winRate;
 	let pick = row.pickRate;
+	let ban = row.banRate;
 	for (let back = 1; back < DAYS; back++) {
 		// Walk backwards from today with a gentle drift, so each champion gets a
 		// direction that persists rather than pure noise.
 		win += (Math.random() - 0.5) * 0.5;
 		pick *= 1 + (Math.random() - 0.5) * 0.06;
+		ban = Math.max(0, ban * (1 + (Math.random() - 0.5) * 0.08));
 		const d = new Date(`${latest}T00:00:00Z`);
 		d.setUTCDate(d.getUTCDate() - back);
 		rows.push({
 			...row,
 			day: d.toISOString().slice(0, 10),
 			winRate: Math.round(win * 100) / 100,
-			pickRate: Math.round(pick * 100) / 100
+			pickRate: Math.round(pick * 100) / 100,
+			banRate: Math.round(ban * 100) / 100
 		});
 	}
 }

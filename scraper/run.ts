@@ -62,7 +62,6 @@ async function main() {
 					banRate: r.banRate,
 					laneShare: r.laneShare,
 					games: r.games,
-					tier: r.tier,
 					patch
 				}
 			];
@@ -84,7 +83,6 @@ async function main() {
 					banRate: sql`excluded.ban_rate`,
 					laneShare: sql`excluded.lane_share`,
 					games: sql`excluded.games`,
-					tier: sql`excluded.tier`,
 					patch: sql`excluded.patch`
 				}
 			})

@@ -10,6 +10,7 @@ export interface TrendPoint {
 	day: string;
 	winRate: number;
 	pickRate: number;
+	banRate: number;
 }
 
 export interface ChampionRow {
@@ -18,7 +19,6 @@ export interface ChampionRow {
 	title: string;
 	slug: string;
 	version: string;
-	tier: string | null;
 	winRate: number;
 	pickRate: number;
 	banRate: number;
@@ -26,6 +26,7 @@ export interface ChampionRow {
 	/** Change over the trend window. `null` until there are ≥2 days of history. */
 	winDelta: number | null;
 	pickDelta: number | null;
+	banDelta: number | null;
 	history: TrendPoint[];
 }
 
@@ -69,7 +70,6 @@ export function laneBoard(lane: Lane, day: string, trendDays = TREND_DAYS): Cham
 			title: champions.title,
 			slug: champions.slug,
 			version: champions.version,
-			tier: snapshots.tier,
 			winRate: snapshots.winRate,
 			pickRate: snapshots.pickRate,
 			banRate: snapshots.banRate,
@@ -85,7 +85,8 @@ export function laneBoard(lane: Lane, day: string, trendDays = TREND_DAYS): Cham
 			championId: snapshots.championId,
 			day: snapshots.day,
 			winRate: snapshots.winRate,
-			pickRate: snapshots.pickRate
+			pickRate: snapshots.pickRate,
+			banRate: snapshots.banRate
 		})
 		.from(snapshots)
 		.where(and(eq(snapshots.lane, lane), gte(snapshots.day, since)))
@@ -96,7 +97,7 @@ export function laneBoard(lane: Lane, day: string, trendDays = TREND_DAYS): Cham
 	for (const h of history) {
 		let series = byChampion.get(h.championId);
 		if (!series) byChampion.set(h.championId, (series = []));
-		series.push({ day: h.day, winRate: h.winRate, pickRate: h.pickRate });
+		series.push({ day: h.day, winRate: h.winRate, pickRate: h.pickRate, banRate: h.banRate });
 	}
 
 	return current
@@ -109,7 +110,8 @@ export function laneBoard(lane: Lane, day: string, trendDays = TREND_DAYS): Cham
 				...c,
 				history: series,
 				winDelta: hasSpan ? last.winRate - first.winRate : null,
-				pickDelta: hasSpan ? last.pickRate - first.pickRate : null
+				pickDelta: hasSpan ? last.pickRate - first.pickRate : null,
+				banDelta: hasSpan ? last.banRate - first.banRate : null
 			};
 		})
 		.sort((a, b) => b.winRate - a.winRate);
@@ -117,7 +119,11 @@ export function laneBoard(lane: Lane, day: string, trendDays = TREND_DAYS): Cham
 
 export interface ChampionDetail {
 	champion: typeof champions.$inferSelect;
-	lanes: { lane: Lane; current: TrendPoint & { banRate: number; games: number; tier: string | null; laneShare: number }; history: TrendPoint[] }[];
+	lanes: {
+		lane: Lane;
+		current: TrendPoint & { games: number; laneShare: number };
+		history: TrendPoint[];
+	}[];
 }
 
 export function championDetail(slug: string, day: string, trendDays = TREND_DAYS): ChampionDetail | null {
@@ -150,10 +156,14 @@ export function championDetail(slug: string, day: string, trendDays = TREND_DAYS
 					pickRate: last.pickRate,
 					banRate: last.banRate,
 					games: last.games,
-					tier: last.tier,
 					laneShare: last.laneShare
 				},
-				history: list.map((r) => ({ day: r.day, winRate: r.winRate, pickRate: r.pickRate }))
+				history: list.map((r) => ({
+					day: r.day,
+					winRate: r.winRate,
+					pickRate: r.pickRate,
+					banRate: r.banRate
+				}))
 			};
 		})
 		// Lead with the lane the champion is actually played in.
