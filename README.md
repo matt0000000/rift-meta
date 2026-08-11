@@ -105,8 +105,33 @@ Notes:
   second, empty database.
 - launchd jobs get a minimal `PATH`, which is why the scrape agent invokes
   `tsx/dist/cli.mjs` through `node` rather than relying on a shebang.
-- If the Mac is asleep at 06:15 the run is deferred until it wakes. The scrape is
-  idempotent, so a catch-up run just rewrites the same day.
+- If the Mac is asleep at 06:15 the run is deferred until it wakes. If it was
+  powered off across 06:15, `RunAtLoad` catches up at the next login. The scrape
+  is idempotent, so either way a catch-up run just rewrites the same day.
+
+## Surviving a reboot
+
+LaunchAgents load at *GUI login*, not at boot, so a headless machine needs to
+reach a logged-in desktop by itself. Two settings decide this:
+
+```sh
+defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser  # must name a user
+fdesetup status                                                         # FileVault must be off
+```
+
+FileVault on with no one to type the unlock password means the Mac sits at the
+login window after a power cut and nothing starts. With auto-login on and
+FileVault off, both agents come back on their own.
+
+Worth pairing with `sudo pmset -a sleep 0 autorestart 1` so the machine never
+sleeps and powers itself back on after a power failure.
+
+Verify it for real rather than assuming — reboot, wait for login, then:
+
+```sh
+launchctl print "gui/$UID/com.riftmeta.web" | grep -E 'state|pid'
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3000
+```
 
 ## Running the daily scrape elsewhere
 

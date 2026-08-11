@@ -33,9 +33,13 @@
 		<integer>15</integer>
 	</dict>
 
-	<!-- If the Mac was asleep at 06:15, run once shortly after it wakes. -->
+	<!-- Catch-up on boot. launchd fires a missed calendar job after a wake, but a
+	     machine that was powered off across 06:15 would otherwise leave a hole in
+	     the trend history. Running at load makes the recovery explicit instead of
+	     relying on launchd's semantics; the scrape upserts on (day, champion,
+	     lane), so a run on a day already collected just refreshes it. -->
 	<key>RunAtLoad</key>
-	<false/>
+	<true/>
 
 	<key>StandardOutPath</key>
 	<string>__PROJECT__/logs/scrape.log</string>
