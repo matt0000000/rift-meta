@@ -1,4 +1,4 @@
-import { and, eq, gte, sql, desc } from 'drizzle-orm';
+import { and, eq, gte, inArray, sql, desc } from 'drizzle-orm';
 import { db } from './db';
 import { champions, snapshots } from './db/schema';
 import type { Lane } from '$lib/lanes';
@@ -127,19 +127,39 @@ export interface ChampionDetail {
 }
 
 export function championDetail(slug: string, day: string, trendDays = TREND_DAYS): ChampionDetail | null {
-	const champion = db.select().from(champions).where(eq(champions.slug, slug)).get();
-	if (!champion) return null;
+	// A slug should identify exactly one champion, and the ingest now guarantees
+	// that. It has not always: Data Dragon briefly shipped `Jade_*` duplicates
+	// sharing a display name, and picking the wrong one of the pair rendered an
+	// empty page for a champion that plainly had data. Resolve against the
+	// snapshots rather than trusting row order, so a future collision degrades
+	// into "right numbers" instead of "no games recorded".
+	const candidates = db.select().from(champions).where(eq(champions.slug, slug)).all();
+	if (!candidates.length) return null;
 
 	const since = windowStart(day, trendDays);
 	const rows = db
 		.select()
 		.from(snapshots)
-		.where(and(eq(snapshots.championId, champion.id), gte(snapshots.day, since)))
+		.where(
+			and(
+				inArray(
+					snapshots.championId,
+					candidates.map((c) => c.id)
+				),
+				gte(snapshots.day, since)
+			)
+		)
 		.orderBy(snapshots.day)
 		.all();
 
+	// Whichever candidate carries the data wins; ties fall back to row order.
+	const counts = new Map<string, number>();
+	for (const r of rows) counts.set(r.championId, (counts.get(r.championId) ?? 0) + 1);
+	const champion =
+		candidates.find((c) => counts.get(c.id) === Math.max(...counts.values())) ?? candidates[0];
+
 	const byLane = new Map<string, typeof rows>();
-	for (const r of rows) {
+	for (const r of rows.filter((r) => r.championId === champion.id)) {
 		let list = byLane.get(r.lane);
 		if (!list) byLane.set(r.lane, (list = []));
 		list.push(r);

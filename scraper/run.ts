@@ -6,7 +6,7 @@
  */
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { sql } from 'drizzle-orm';
+import { and, eq, notExists, notInArray, sql } from 'drizzle-orm';
 import { db } from '../src/lib/server/db';
 import { champions, snapshots } from '../src/lib/server/db/schema';
 import { LANES } from '../src/lib/lanes';
@@ -35,6 +35,26 @@ async function main() {
 			}
 		})
 		.run();
+
+	// Drop roster entries Data Dragon no longer lists, but only where no snapshot
+	// depends on them — a champion that has history keeps it even if Riot stops
+	// serving the entry. Without this the table only ever grows, and a duplicate
+	// that appears for one patch stays ambiguous forever.
+	const pruned = db
+		.delete(champions)
+		.where(
+			and(
+				notInArray(champions.id, roster.map((c) => c.id)),
+				notExists(
+					db
+						.select({ one: sql`1` })
+						.from(snapshots)
+						.where(eq(snapshots.championId, champions.id))
+				)
+			)
+		)
+		.run();
+	if (pruned.changes) console.log(`  pruned ${pruned.changes} stale champion rows`);
 
 	// "16.15.1" -> "16.15". Data Dragon is a more reliable source for the live
 	// patch than the tier-list page, which labels itself by the sample window.
