@@ -8,7 +8,12 @@
 	let { data }: { data: PageData } = $props();
 
 	let selected = $state(0);
-	let active = $derived(data.lanes[selected] ?? data.lanes[0]);
+	// SvelteKit reuses this component across /champion/[slug] navigations, so a
+	// selection made on a three-lane champion would survive onto a one-lane one.
+	// Clamping in a derived keeps the highlighted tab and the charts in step
+	// without an effect resetting state behind the scenes.
+	let index = $derived(selected < data.lanes.length ? selected : 0);
+	let active = $derived(data.lanes[index]);
 
 	function delta(values: number[]): number | null {
 		return values.length >= 2 ? values.at(-1)! - values[0] : null;
@@ -53,10 +58,11 @@
 			{#each data.lanes as l, i (l.lane)}
 				<button
 					onclick={() => (selected = i)}
-					aria-current={i === selected ? 'true' : undefined}
-					class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors {i === selected
-						? 'bg-surface-2 text-ink'
-						: 'text-ink-2 hover:text-ink'}"
+					aria-pressed={i === index}
+					class={[
+						'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+						i === index ? 'bg-surface-2 text-ink' : 'text-ink-2 hover:text-ink'
+					]}
 				>
 					{LANE_LABELS[l.lane]}
 					<span class="text-ink-3 ml-1 text-xs">{l.current.laneShare.toFixed(0)}%</span>

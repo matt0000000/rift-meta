@@ -24,9 +24,11 @@
 	<span class="text-ink-3 nums text-xs" title="No meaningful change">–</span>
 {:else}
 	<span
-		class="nums inline-flex items-center gap-0.5 text-xs font-medium"
-		class:text-up={dir === 'up'}
-		class:text-down={dir === 'down'}
+		class={[
+			'nums inline-flex items-center gap-0.5 text-xs font-medium',
+			dir === 'up' && 'text-up',
+			dir === 'down' && 'text-down'
+		]}
 	>
 		<span aria-hidden="true">{dir === 'up' ? '▲' : '▼'}</span>
 		<span>{value > 0 ? '+' : ''}{value.toFixed(digits)}</span>
