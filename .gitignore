@@ -1,0 +1,16 @@
+node_modules
+/build
+/.svelte-kit
+/dist
+
+# SQLite database + WAL sidecars. The data is reproducible by scraping.
+/data
+*.db
+*.db-shm
+*.db-wal
+
+/logs
+.env
+.env.*
+!.env.example
+.DS_Store

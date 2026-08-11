@@ -1,0 +1,41 @@
+@import 'tailwindcss';
+
+/*
+ * Single, deliberate dark theme — the Dota Plus panels this is modelled on are
+ * dark-only, and a light variant would fight the champion portraits.
+ * Series hues are dark-surface steps validated against --surface-0.
+ */
+@theme {
+	--color-surface-0: #101012;
+	--color-surface-1: #16161a;
+	--color-surface-2: #1d1d22;
+	--color-line: #2a2a31;
+
+	--color-ink: #f2f2ef;
+	--color-ink-2: #a8a8a2;
+	--color-ink-3: #6f6f6a;
+
+	--color-win: #3987e5; /* win-rate series */
+	--color-pick: #d95926; /* pick-rate series */
+
+	--color-up: #0ca30c; /* status: good */
+	--color-down: #d03b3b; /* status: critical */
+
+	--font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+	color-scheme: dark;
+	background: var(--color-surface-0);
+}
+
+body {
+	background: var(--color-surface-0);
+	color: var(--color-ink);
+	-webkit-font-smoothing: antialiased;
+}
+
+/* Tabular figures everywhere numbers are compared down a column. */
+.nums {
+	font-variant-numeric: tabular-nums;
+}
