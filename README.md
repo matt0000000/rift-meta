@@ -224,10 +224,12 @@ rather than silently recording zeros.
 - **Movers need a floor.** A 0.2% pick-rate champion swings points on sampling
   noise alone, so "Biggest movers" only considers champions above 1% pick — and
   says so in the caption rather than filtering silently.
-- **One measure at a time below `md`.** Eleven columns is a horizontal-scroll
-  experience on a phone, which is where champion stats actually get read. The
-  columns are hidden in CSS rather than by measuring the viewport in JS, so the
-  server and client render the same markup.
+- **Cards below `md`, table above.** Eleven columns cannot fit a 390px viewport,
+  but splitting the measures across tabs to make them fit costs the comparison
+  that the board exists for. The measures stack vertically per champion instead,
+  so win, pick and ban stay on screen together. Both layouts render from the same
+  rows and swap in CSS, so the server and client agree without measuring the
+  viewport in JS.
 - **View state lives in the URL.** `?lane=&sort=&dir=&min=&q=` makes a sorted,
   filtered board a shareable link and stops a lane switch from resetting it.
   Only non-defaults are written, so the common case stays `?lane=top`.

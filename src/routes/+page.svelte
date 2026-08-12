@@ -35,8 +35,6 @@
 	let dir = $state<'asc' | 'desc'>(params.get('dir') === 'asc' ? 'asc' : 'desc');
 	let minPick = $state(Number(params.get('min') ?? DEFAULTS.min) || 0);
 	let q = $state(params.get('q') ?? '');
-	/** Which measure the narrow layout shows; all three are visible from `md` up. */
-	let measure = $state<(typeof measures)[number]['key']>('winRate');
 
 	function query(overrides: Record<string, string | number | null> = {}) {
 		const next = new URLSearchParams();
@@ -171,25 +169,36 @@
 	<Movers rows={data.rows} {spanDays} />
 
 	<!--
-		Narrow screens show one measure at a time: eleven columns on a phone is a
-		horizontal-scroll experience, and this is a phone-in-champion-select site.
+		The card layout has no column headers to click, so narrow screens get an
+		explicit sort control instead.
 	-->
 	<div class="mb-3 flex items-center gap-2 md:hidden">
-		<span class="text-ink-2 text-xs">Show</span>
-		<div class="flex gap-1 rounded-lg bg-surface-1 p-1">
-			{#each measures as m (m.key)}
-				<button
-					onclick={() => (measure = m.key)}
-					aria-pressed={measure === m.key}
-					class={[
-						'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-						measure === m.key ? 'bg-surface-2 text-ink' : 'text-ink-2'
-					]}
-				>
-					{m.short}
-				</button>
-			{/each}
-		</div>
+		<label class="text-ink-2 flex items-center gap-2 text-xs">
+			Sort by
+			<select
+				value={sort}
+				onchange={(e) => {
+					sort = asSort(e.currentTarget.value);
+					sync();
+				}}
+				class="border-line bg-surface-1 text-ink rounded-lg border px-2 py-1.5 text-xs outline-none"
+			>
+				{#each measures as m (m.key)}
+					<option value={m.key}>{m.label}</option>
+					<option value={m.delta}>{m.label} change</option>
+				{/each}
+			</select>
+		</label>
+		<button
+			onclick={() => {
+				dir = dir === 'desc' ? 'asc' : 'desc';
+				sync();
+			}}
+			class="border-line bg-surface-1 text-ink-2 hover:text-ink rounded-lg border px-2.5 py-1.5 text-xs transition-colors"
+			aria-label={dir === 'desc' ? 'Sorted highest first' : 'Sorted lowest first'}
+		>
+			{dir === 'desc' ? '▼ High' : '▲ Low'}
+		</button>
 	</div>
 
 	{#if !rows.length}
@@ -200,19 +209,60 @@
 			</p>
 		</div>
 	{:else}
-		<div class="overflow-x-auto rounded-lg border border-line">
-			<table class="w-full border-collapse text-sm md:min-w-[940px]">
+		<!--
+			Phones get a card per champion rather than the table. All three measures
+			belong on screen together, and eleven columns cannot be on a 390px
+			viewport without horizontal scrolling — so the measures stack vertically
+			instead of the champions being split across tabs.
+		-->
+		<ul class="flex flex-col gap-2 md:hidden">
+			{#each rows as row, i (row.id)}
+				<li class="rounded-lg border border-line bg-surface-1 p-3">
+					<a
+						href={resolve('/champion/[slug]', { slug: row.slug })}
+						class="mb-2 flex items-center gap-2.5"
+					>
+						<span class="nums text-ink-3 w-4 text-xs">{i + 1}</span>
+						<img
+							src={portraitUrl(row.version, row.id)}
+							alt=""
+							width="26"
+							height="26"
+							loading="lazy"
+							class="rounded"
+						/>
+						<span class="truncate font-medium">{row.name}</span>
+					</a>
+					<dl class="flex flex-col gap-1">
+						{#each measures as m (m.key)}
+							<div class="flex items-center gap-2">
+								<dt class="text-ink-2 w-8 text-xs">{m.short}</dt>
+								<dd class="nums w-16 text-right text-sm font-medium">
+									{row[m.key].toFixed(2)}%
+								</dd>
+								<dd class="w-14 text-right"><Delta value={row[m.delta]} /></dd>
+								<dd class="ml-auto">
+									<Sparkline
+										values={row.history.map((h) => h[m.key])}
+										color={m.color}
+										label="{row.name} {m.label.toLowerCase()} over {spanDays} days"
+									/>
+								</dd>
+							</div>
+						{/each}
+					</dl>
+				</li>
+			{/each}
+		</ul>
+
+		<div class="hidden overflow-x-auto rounded-lg border border-line md:block">
+			<table class="w-full min-w-[940px] border-collapse text-sm">
 				<thead>
 					<tr class="bg-surface-1 text-ink-2 text-left text-xs">
 						<th scope="col" class="w-10 px-3 py-2.5 font-medium">#</th>
 						<th scope="col" class="px-3 py-2.5 font-medium">Champion</th>
 						{#each measures as m (m.key)}
-							{@const shown = measure === m.key}
-							<th
-								scope="col"
-								aria-sort={ariaSort(m.key)}
-								class={['px-3 py-2.5 text-right font-medium', !shown && 'hidden md:table-cell']}
-							>
+							<th scope="col" aria-sort={ariaSort(m.key)} class="px-3 py-2.5 text-right font-medium">
 								<button
 									onclick={() => sortBy(m.key)}
 									class="hover:text-ink transition-colors {sort === m.key ? 'text-ink' : ''}"
@@ -220,11 +270,7 @@
 									{m.label}{#if sort === m.key}<span aria-hidden="true" class="ml-1">{dir === 'asc' ? '▲' : '▼'}</span>{/if}
 								</button>
 							</th>
-							<th
-								scope="col"
-								aria-sort={ariaSort(m.delta)}
-								class={['px-2 py-2.5 text-right font-medium', !shown && 'hidden md:table-cell']}
-							>
+							<th scope="col" aria-sort={ariaSort(m.delta)} class="px-2 py-2.5 text-right font-medium">
 								<button
 									onclick={() => sortBy(m.delta)}
 									class="hover:text-ink transition-colors {sort === m.delta ? 'text-ink' : ''}"
@@ -233,12 +279,7 @@
 									Δ{#if sort === m.delta}<span aria-hidden="true" class="ml-0.5">{dir === 'asc' ? '▲' : '▼'}</span>{/if}
 								</button>
 							</th>
-							<th
-								scope="col"
-								class={['w-20 px-2 py-2.5 font-medium', !shown && 'hidden md:table-cell']}
-							>
-								Trend
-							</th>
+							<th scope="col" class="w-20 px-2 py-2.5 font-medium">Trend</th>
 						{/each}
 					</tr>
 				</thead>
@@ -264,19 +305,9 @@
 							</td>
 
 							{#each measures as m (m.key)}
-								{@const shown = measure === m.key}
-								<td
-									class={[
-										'nums px-3 py-2 text-right font-medium',
-										!shown && 'hidden md:table-cell'
-									]}
-								>
-									{row[m.key].toFixed(2)}%
-								</td>
-								<td class={['px-2 py-2 text-right', !shown && 'hidden md:table-cell']}>
-									<Delta value={row[m.delta]} />
-								</td>
-								<td class={['px-2 py-2', !shown && 'hidden md:table-cell']}>
+								<td class="nums px-3 py-2 text-right font-medium">{row[m.key].toFixed(2)}%</td>
+								<td class="px-2 py-2 text-right"><Delta value={row[m.delta]} /></td>
+								<td class="px-2 py-2">
 									<Sparkline
 										values={row.history.map((h) => h[m.key])}
 										color={m.color}
