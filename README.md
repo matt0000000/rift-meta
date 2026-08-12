@@ -218,6 +218,19 @@ rather than silently recording zeros.
   sign, so it survives colorblindness and print; the blue/orange series pair is
   validated for CVD separation against the dark surface.
 - **Flat is flat.** Moves under 0.05pp render as `–` rather than as a trend.
+- **The trend window is described by what it holds, not by its nominal size.**
+  Labels read "over N days" from the actual history length, so a two-day-old
+  database does not advertise a 14-day trend.
+- **Movers need a floor.** A 0.2% pick-rate champion swings points on sampling
+  noise alone, so "Biggest movers" only considers champions above 1% pick — and
+  says so in the caption rather than filtering silently.
+- **One measure at a time below `md`.** Eleven columns is a horizontal-scroll
+  experience on a phone, which is where champion stats actually get read. The
+  columns are hidden in CSS rather than by measuring the viewport in JS, so the
+  server and client render the same markup.
+- **View state lives in the URL.** `?lane=&sort=&dir=&min=&q=` makes a sorted,
+  filtered board a shareable link and stops a lane switch from resetting it.
+  Only non-defaults are written, so the common case stays `?lane=top`.
 
 ## Attribution
 
