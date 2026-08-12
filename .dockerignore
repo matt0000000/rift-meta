@@ -1,0 +1,26 @@
+# node_modules is macOS/arm64 with a compiled better-sqlite3 binding; copying it
+# into a Linux image would produce an unloadable .node. Always reinstall inside.
+node_modules
+build
+.svelte-kit
+dist
+
+# The database is a runtime volume, never baked into an image.
+data
+*.db
+*.db-shm
+*.db-wal
+logs
+
+.git
+.github
+.vscode
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# launchd deployment — superseded by compose inside the container.
+deploy/*.plist
+deploy/install.sh
+README.md

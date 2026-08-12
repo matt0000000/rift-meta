@@ -63,7 +63,61 @@ DATABASE_URL=data/dev.db npm run dev
 | `npm run seed:dev` | Back-fill synthetic history (dev databases only) |
 | `npm run build` | Production build |
 
-## Deploying locally (macOS)
+## Deploying with Docker (current setup)
+
+```bash
+cp .env.example .env    # UID/GID must match the owner of ./data
+docker compose up -d --build
+```
+
+Two services off one dependency graph: `web` (adapter-node, no browser) and
+`scraper` (Playwright + Chromium). Both are built from the same `Dockerfile` via
+separate targets, so the server does not carry a ~500MB browser it never runs.
+
+| Task | Command |
+|---|---|
+| Status | `docker compose ps` |
+| Logs | `docker compose logs -f` |
+| Scrape right now | `docker compose exec scraper node node_modules/tsx/dist/cli.mjs scraper/run.ts` |
+| Restart the site | `docker compose restart web` |
+| After a code change | `docker compose up -d --build` |
+| Stop | `docker compose down` |
+
+### Things worth knowing
+
+- **`./data` is a bind mount, not a named volume.** The trend history is the one
+  thing here that cannot be re-fetched — Lolalytics serves only current data — so
+  it stays on the host where ordinary tools can back it up.
+- **`user:` must match the host owner of `./data`.** The container writes SQLite
+  through the mount; a uid mismatch shows up as `SQLITE_READONLY`. `.env` carries
+  `UID`/`GID` for this reason.
+- **`shm_size: 512mb`** — Chromium exceeds Docker's 64MB `/dev/shm` default and
+  the renderer dies mid-scrape without it.
+- **`init: true`** — the scrape loop runs as pid 1 and does not reap children;
+  Chromium leaves zombies behind without an init.
+- **`TZ`** sets when the daily scrape fires. Snapshot *days* are stamped UTC
+  regardless, so a 06:15 local run lands on the expected date anywhere west of
+  UTC+6.
+- The scraper container replaces launchd's schedule with a sleep loop
+  (`deploy/docker/scrape-loop.sh`): it scrapes once on start to catch up a
+  missed day, then daily at `SCRAPE_AT`.
+
+### Surviving a reboot under Docker
+
+Containers restart via `restart: unless-stopped`, but only once the Docker engine
+itself is up — and on macOS that engine starts at *login*, same constraint as
+launchd. Check all three:
+
+```sh
+orb config show | grep start_at_login                                    # OrbStack
+defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser   # must name a user
+fdesetup status                                                          # FileVault off
+```
+
+## Deploying with launchd instead (no Docker)
+
+Superseded by the compose setup above — run `./deploy/install.sh --uninstall`
+before using one if the other is live, or they will fight over the port.
 
 `deploy/install.sh` builds the app and installs two launchd agents — the site,
 and the daily scrape:

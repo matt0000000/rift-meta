@@ -1,0 +1,56 @@
+# Two services over one SQLite file on a host bind mount.
+#
+# The bind mount is deliberate: the trend history is the one thing here that
+# cannot be re-fetched (Lolalytics serves only current data), so it stays
+# visible on the host where it can be backed up with ordinary tools, rather than
+# hidden inside a named volume.
+
+x-data: &data
+  # uid:gid of the host user that owns ./data, so the container can write to the
+  # bind mount. Override in .env if this project ever moves to another account.
+  user: "${UID:-501}:${GID:-20}"
+  volumes:
+    - ./data:/app/data
+  environment:
+    DATABASE_URL: /app/data/stats.db
+    # Snapshot days are stamped in UTC, but the scrape *schedule* is local, the
+    # same as the launchd job it replaces. Containers default to UTC.
+    TZ: ${TZ:-Europe/Istanbul}
+
+services:
+  web:
+    <<: *data
+    build:
+      context: .
+      target: web
+    image: rift-meta-web
+    ports:
+      # Bound to all interfaces so the site is reachable from the LAN.
+      - "${PORT:-3000}:3000"
+    restart: unless-stopped
+    healthcheck:
+      # adapter-node serves the board at /, which touches SQLite — so this
+      # checks the database is readable too, not just that node is alive.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+  scraper:
+    <<: *data
+    build:
+      context: .
+      target: scraper
+    image: rift-meta-scraper
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: /app/data/stats.db
+      TZ: ${TZ:-Europe/Istanbul}
+      SCRAPE_AT: ${SCRAPE_AT:-06:15}
+    # Chromium spawns a helper process per tab; without an init, zombie reaping
+    # falls to the shell loop as pid 1, which does not reap.
+    init: true
+    # Chromium's /dev/shm usage exceeds Docker's default 64MB and crashes the
+    # renderer mid-scrape.
+    shm_size: 512mb
