@@ -224,12 +224,14 @@ rather than silently recording zeros.
 - **Movers need a floor.** A 0.2% pick-rate champion swings points on sampling
   noise alone, so "Biggest movers" only considers champions above 1% pick — and
   says so in the caption rather than filtering silently.
-- **Cards below `md`, table above.** Eleven columns cannot fit a 390px viewport,
-  but splitting the measures across tabs to make them fit costs the comparison
-  that the board exists for. The measures stack vertically per champion instead,
-  so win, pick and ban stay on screen together. Both layouts render from the same
-  rows and swap in CSS, so the server and client agree without measuring the
-  viewport in JS.
+- **Cards below `md`, columns above — from one DOM.** Eleven columns cannot fit a
+  390px viewport, but splitting the measures across tabs to make them fit costs
+  the comparison the board exists for, so the measures stack per champion
+  instead. Rendering a table *and* a card list emitted every champion twice;
+  each measure's cells are now wrapped for the card layout and the wrapper is
+  dissolved with `md:contents`, so the same cells become grid columns on desktop.
+  The wrappers are `role="presentation"` so rows still own their cells. Nothing
+  measures the viewport in JS, so server and client markup agree.
 - **View state lives in the URL.** `?lane=&sort=&dir=&min=&q=` makes a sorted,
   filtered board a shareable link and stops a lane switch from resetting it.
   Only non-defaults are written, so the common case stays `?lane=top`.

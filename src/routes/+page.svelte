@@ -18,6 +18,12 @@
 		{ key: 'banRate', delta: 'banDelta', label: 'Ban rate', short: 'Ban', color: 'var(--color-ban)' }
 	] as const;
 
+	// One template shared by the header and every row so the columns line up.
+	// Written as a literal here because Tailwind scans source text for class
+	// names — building it by concatenation would leave it ungenerated.
+	const GRID =
+		'md:grid-cols-[2.5rem_minmax(8rem,1fr)_repeat(3,4rem_3.5rem_4.5rem)] md:gap-x-2';
+
 	type SortKey = (typeof measures)[number]['key'] | (typeof measures)[number]['delta'];
 	const SORT_KEYS = measures.flatMap((m) => [m.key, m.delta]) as SortKey[];
 
@@ -210,115 +216,90 @@
 		</div>
 	{:else}
 		<!--
-			Phones get a card per champion rather than the table. All three measures
-			belong on screen together, and eleven columns cannot be on a 390px
-			viewport without horizontal scrolling — so the measures stack vertically
-			instead of the champions being split across tabs.
+			One DOM for both layouts. Rendering a table for desktop and cards for
+			phones meant every champion, and all three of its sparklines, was emitted
+			twice — half of each response was markup the viewport would never show, and
+			it grew with the trend window. Here each measure's three cells are wrapped
+			for the card layout and the wrapper is dissolved with `md:contents`, so the
+			same cells become real grid columns on desktop. The wrappers are
+			`presentation` so the row still owns its cells for assistive tech.
 		-->
-		<ul class="flex flex-col gap-2 md:hidden">
+		<div
+			role="table"
+			aria-label="{LANE_LABELS[data.lane]} champion statistics"
+			class="flex flex-col gap-2 md:block md:gap-0 md:overflow-hidden md:rounded-lg md:border md:border-line"
+		>
+			<div
+				role="row"
+				class="text-ink-2 hidden bg-surface-1 px-3 py-2.5 text-xs md:grid {GRID}"
+			>
+				<span role="columnheader">#</span>
+				<span role="columnheader">Champion</span>
+				{#each measures as m (m.key)}
+					<span role="columnheader" aria-sort={ariaSort(m.key)} class="text-right font-medium">
+						<button
+							onclick={() => sortBy(m.key)}
+							class="hover:text-ink transition-colors {sort === m.key ? 'text-ink' : ''}"
+						>
+							{m.label}{#if sort === m.key}<span aria-hidden="true" class="ml-1">{dir === 'asc' ? '▲' : '▼'}</span>{/if}
+						</button>
+					</span>
+					<span role="columnheader" aria-sort={ariaSort(m.delta)} class="text-right font-medium">
+						<button
+							onclick={() => sortBy(m.delta)}
+							class="hover:text-ink transition-colors {sort === m.delta ? 'text-ink' : ''}"
+							title={deltaTitle}
+						>
+							Δ{#if sort === m.delta}<span aria-hidden="true" class="ml-0.5">{dir === 'asc' ? '▲' : '▼'}</span>{/if}
+						</button>
+					</span>
+					<span role="columnheader" class="font-medium">Trend</span>
+				{/each}
+			</div>
+
 			{#each rows as row, i (row.id)}
-				<li class="rounded-lg border border-line bg-surface-1 p-3">
-					<a
-						href={resolve('/champion/[slug]', { slug: row.slug })}
-						class="mb-2 flex items-center gap-2.5"
-					>
-						<span class="nums text-ink-3 w-4 text-xs">{i + 1}</span>
-						<img
-							src={portraitUrl(row.version, row.id)}
-							alt=""
-							width="26"
-							height="26"
-							loading="lazy"
-							class="rounded"
-						/>
-						<span class="truncate font-medium">{row.name}</span>
-					</a>
-					<dl class="flex flex-col gap-1">
-						{#each measures as m (m.key)}
-							<div class="flex items-center gap-2">
-								<dt class="text-ink-2 w-8 text-xs">{m.short}</dt>
-								<dd class="nums w-16 text-right text-sm font-medium">
-									{row[m.key].toFixed(2)}%
-								</dd>
-								<dd class="w-14 text-right"><Delta value={row[m.delta]} /></dd>
-								<dd class="ml-auto">
-									<Sparkline
-										values={row.history.map((h) => h[m.key])}
-										color={m.color}
-										label="{row.name} {m.label.toLowerCase()} over {spanDays} days"
-									/>
-								</dd>
-							</div>
-						{/each}
-					</dl>
-				</li>
-			{/each}
-		</ul>
+				<div
+					role="row"
+					class="rounded-lg border border-line bg-surface-1 p-3 md:items-center md:rounded-none md:border-0 md:border-t md:border-line md:bg-transparent md:px-3 md:py-2 md:hover:bg-surface-1 md:grid {GRID}"
+				>
+					<div role="presentation" class="mb-2 flex items-center gap-2.5 md:contents">
+						<span role="cell" class="nums text-ink-3 text-xs">{i + 1}</span>
+						<span role="cell">
+							<a
+								href={resolve('/champion/[slug]', { slug: row.slug })}
+								class="flex items-center gap-2.5 hover:underline"
+							>
+								<img
+									src={portraitUrl(row.version, row.id)}
+									alt=""
+									width="28"
+									height="28"
+									loading="lazy"
+									class="rounded"
+								/>
+								<span class="truncate font-medium">{row.name}</span>
+							</a>
+						</span>
+					</div>
 
-		<div class="hidden overflow-x-auto rounded-lg border border-line md:block">
-			<table class="w-full min-w-[940px] border-collapse text-sm">
-				<thead>
-					<tr class="bg-surface-1 text-ink-2 text-left text-xs">
-						<th scope="col" class="w-10 px-3 py-2.5 font-medium">#</th>
-						<th scope="col" class="px-3 py-2.5 font-medium">Champion</th>
-						{#each measures as m (m.key)}
-							<th scope="col" aria-sort={ariaSort(m.key)} class="px-3 py-2.5 text-right font-medium">
-								<button
-									onclick={() => sortBy(m.key)}
-									class="hover:text-ink transition-colors {sort === m.key ? 'text-ink' : ''}"
-								>
-									{m.label}{#if sort === m.key}<span aria-hidden="true" class="ml-1">{dir === 'asc' ? '▲' : '▼'}</span>{/if}
-								</button>
-							</th>
-							<th scope="col" aria-sort={ariaSort(m.delta)} class="px-2 py-2.5 text-right font-medium">
-								<button
-									onclick={() => sortBy(m.delta)}
-									class="hover:text-ink transition-colors {sort === m.delta ? 'text-ink' : ''}"
-									title={deltaTitle}
-								>
-									Δ{#if sort === m.delta}<span aria-hidden="true" class="ml-0.5">{dir === 'asc' ? '▲' : '▼'}</span>{/if}
-								</button>
-							</th>
-							<th scope="col" class="w-20 px-2 py-2.5 font-medium">Trend</th>
-						{/each}
-					</tr>
-				</thead>
-				<tbody>
-					{#each rows as row, i (row.id)}
-						<tr class="border-t border-line hover:bg-surface-1">
-							<td class="nums text-ink-3 px-3 py-2 text-xs">{i + 1}</td>
-							<td class="px-3 py-2">
-								<a
-									href={resolve('/champion/[slug]', { slug: row.slug })}
-									class="flex items-center gap-2.5 hover:underline"
-								>
-									<img
-										src={portraitUrl(row.version, row.id)}
-										alt=""
-										width="28"
-										height="28"
-										loading="lazy"
-										class="rounded"
-									/>
-									<span class="font-medium">{row.name}</span>
-								</a>
-							</td>
-
-							{#each measures as m (m.key)}
-								<td class="nums px-3 py-2 text-right font-medium">{row[m.key].toFixed(2)}%</td>
-								<td class="px-2 py-2 text-right"><Delta value={row[m.delta]} /></td>
-								<td class="px-2 py-2">
-									<Sparkline
-										values={row.history.map((h) => h[m.key])}
-										color={m.color}
-										label="{row.name} {m.label.toLowerCase()} over {spanDays} days"
-									/>
-								</td>
-							{/each}
-						</tr>
+					{#each measures as m (m.key)}
+						<div role="presentation" class="flex items-center gap-2 md:contents">
+							<span class="text-ink-2 w-8 text-xs md:hidden" aria-hidden="true">{m.short}</span>
+							<span role="cell" class="nums w-16 text-right text-sm font-medium md:w-auto">
+								{row[m.key].toFixed(2)}%
+							</span>
+							<span role="cell" class="w-14 text-right md:w-auto"><Delta value={row[m.delta]} /></span>
+							<span role="cell" class="ml-auto md:ml-0">
+								<Sparkline
+									values={row.history.map((h) => h[m.key])}
+									color={m.color}
+									label="{row.name} {m.label.toLowerCase()} over {spanDays} days"
+								/>
+							</span>
+						</div>
 					{/each}
-				</tbody>
-			</table>
+				</div>
+			{/each}
 		</div>
 	{/if}
 {/if}
